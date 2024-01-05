@@ -4,7 +4,9 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"path"
 	"reflect"
+	"runtime"
 	"testing"
 )
 
@@ -17,6 +19,9 @@ func serverToString(s *serverConfig) string {
 }
 
 func TestParseArgsSuccess(t *testing.T) {
+	_, filename, _, _ := runtime.Caller(0)
+	dir := path.Dir(filename)
+
 	cases := []struct {
 		name   string
 		args   []string
@@ -39,6 +44,16 @@ func TestParseArgsSuccess(t *testing.T) {
 				"test-headers: value1",
 				"-H",
 				"test-headers: value2",
+				"200",
+				"\n\na\nb\nc\n\n\n",
+				"--trim-newline",
+				"200",
+				path.Join(dir, "testdata/body.txt"),
+				"--body-file",
+				"200",
+				path.Join(dir, "testdata/body.txt"),
+				"--body-file",
+				"--trim-newline",
 			},
 			expect: &serverConfig{
 				addr:    ":8080",
@@ -59,7 +74,25 @@ func TestParseArgsSuccess(t *testing.T) {
 							"test-headers: value2",
 						},
 					}
-					return []*responseConfig{resp1, resp1, resp2, resp2, resp2}
+					return []*responseConfig{
+						resp1, resp1,
+						resp2, resp2, resp2,
+						{
+							statusCode: 200,
+							body:       []byte("a\nb\nc"),
+							headers:    []string{},
+						},
+						{
+							statusCode: 200,
+							body:       []byte("body from file\n"),
+							headers:    []string{},
+						},
+						{
+							statusCode: 200,
+							body:       []byte("body from file"),
+							headers:    []string{},
+						},
+					}
 				}(),
 			},
 		},
@@ -175,7 +208,7 @@ func TestParseArgsSuccess(t *testing.T) {
 				t.Fatalf("error was not expected but got: %#v", err)
 			}
 			if !reflect.DeepEqual(actual, c.expect) {
-				t.Errorf("expect %s, but got %s", serverToString(actual), serverToString(c.expect))
+				t.Errorf("expect %s, but got %s", serverToString(c.expect), serverToString(actual))
 			}
 		})
 	}

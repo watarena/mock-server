@@ -1,10 +1,12 @@
 package main
 
 import (
+	"bytes"
 	"errors"
 	"flag"
 	"fmt"
 	"io"
+	"os"
 	"strconv"
 )
 
@@ -23,6 +25,13 @@ func (a *optStringArray) Set(s string) error {
 	*a = append(*a, s)
 	return nil
 }
+
+type loadBody func(string) ([]byte, error)
+
+var (
+	loadBodyRaw  loadBody = func(s string) ([]byte, error) { return []byte(s), nil }
+	loadBodyFile loadBody = func(s string) ([]byte, error) { return os.ReadFile(s) }
+)
 
 func parseArgs(args []string) (*serverConfig, error) {
 	server, rest, err := parseGrobalOptions(args)
@@ -106,7 +115,7 @@ func parseResponsesPart(args []string) ([]*responseConfig, error) {
 		if err != nil {
 			return nil, err
 		}
-		body := rest[1]
+		bodyArg := rest[1]
 
 		f := flag.NewFlagSet("", flag.ContinueOnError)
 		f.Usage = func() {}
@@ -114,17 +123,28 @@ func parseResponsesPart(args []string) ([]*responseConfig, error) {
 
 		repeat := 1
 		headers := optStringArray([]string{})
+		loadBody := loadBodyRaw
+		trimNewline := false
 
 		f.IntVar(&repeat, "r", 1, "")
 		f.IntVar(&repeat, "repeat", 1, "")
 		f.Var(&headers, "H", "")
 		f.Var(&headers, "header", "")
+		f.BoolFunc("body-file", "", func(_ string) error { loadBody = loadBodyFile; return nil })
+		f.BoolVar(&trimNewline, "trim-newline", false, "")
 
 		if err := f.Parse(rest[2:]); err != nil {
 			return nil, err
 		}
 		if repeat <= 0 {
 			return nil, errors.New("repeat must be positive")
+		}
+		body, err := loadBody(bodyArg)
+		if err != nil {
+			return nil, err
+		}
+		if trimNewline {
+			body = bytes.Trim(body, "\n")
 		}
 
 		resp := &responseConfig{

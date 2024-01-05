@@ -18,6 +18,8 @@ GROBAL OPTIONS:
 RESPONSE OPTIONS:
   -H, --header <header> Add header to the response
   -r, --repeat <positive num> Repeat the response
+      --body-file Treat <body> as a file path and read body from it
+      --trim-newline Remove all leading and traling newline from body
 `
 var usage = fmt.Sprintf(usageFormat, filepath.Base(os.Args[0]))
 
