@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"maps"
 	"net/http"
 	"net/http/httputil"
 	"net/textproto"
@@ -148,7 +149,7 @@ func newResponse(c *responseConfig, baseHeader map[string][]string) (*response, 
 	r := &response{
 		statusCode: c.statusCode,
 		body:       c.body,
-		header:     make(map[string][]string),
+		header:     maps.Clone(baseHeader),
 	}
 
 	header, err := parseHeaders(c.headers)
@@ -156,13 +157,7 @@ func newResponse(c *responseConfig, baseHeader map[string][]string) (*response, 
 		return nil, err
 	}
 
-	for k, v := range baseHeader {
-		r.header[k] = v
-	}
-
-	for k, v := range header {
-		r.header[k] = v
-	}
+	maps.Copy(r.header, header)
 
 	return r, nil
 }
