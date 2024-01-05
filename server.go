@@ -39,8 +39,19 @@ type response struct {
 	header     map[string][]string
 }
 
+type logger struct {
+	mu sync.Mutex
+}
+
+func (l *logger) log(w io.Writer, msg string) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	fmt.Fprintln(w, msg)
+}
+
 type handler struct {
 	mu        sync.Mutex
+	logger    logger
 	responses []*response
 	// shutdownServer shutdown the server of this handler
 	shutdownServer func()
@@ -51,6 +62,10 @@ type handler struct {
 type server struct {
 	*http.Server
 	shutdownCh chan error
+}
+
+func (s *server) waitForShutDown() {
+	<-s.shutdownCh
 }
 
 // getResponse returns the next response and wheather the response is the last if such a response exists,
@@ -78,9 +93,9 @@ func (h *handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	reqBytes, err := httputil.DumpRequest(r, true)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Failed to dump request: %v", err)
+		h.logger.log(os.Stderr, fmt.Sprintf("Failed to dump request: %v", err))
 	} else {
-		fmt.Println(string(reqBytes))
+		h.logger.log(os.Stdout, string(reqBytes))
 	}
 
 	for k, vs := range resp.header {
