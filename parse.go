@@ -129,7 +129,7 @@ func parseResponsesPart(args []string) ([]*responseConfig, error) {
 
 		resp := &responseConfig{
 			statusCode: statusCode,
-			body:       body,
+			body:       []byte(body),
 			headers:    headers,
 		}
 		resps = append(resps, repeatResponse(resp, repeat)...)

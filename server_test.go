@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"net/http"
@@ -49,14 +50,14 @@ func TestNewServerSuccess(t *testing.T) {
 		responses: []*responseConfig{
 			{
 				statusCode: 200,
-				body:       "OK",
+				body:       []byte("OK"),
 				headers: []string{
 					"header3: value3",
 				},
 			},
 			{
 				statusCode: 400,
-				body:       "Bad Request",
+				body:       []byte("Bad Request"),
 				headers: []string{
 					"header2: respvalue2",
 					"header3: value3",
@@ -70,7 +71,7 @@ func TestNewServerSuccess(t *testing.T) {
 		responses: []*response{
 			{
 				statusCode: 200,
-				body:       "OK",
+				body:       []byte("OK"),
 				header: map[string][]string{
 					"header1": {"value1"},
 					"header2": {"value2-1", "value2-2"},
@@ -79,7 +80,7 @@ func TestNewServerSuccess(t *testing.T) {
 			},
 			{
 				statusCode: 400,
-				body:       "Bad Request",
+				body:       []byte("Bad Request"),
 				header: map[string][]string{
 					"header1": {"value1"},
 					"header2": {"respvalue2"},
@@ -180,14 +181,14 @@ func TestHandler_ServeHTTP(t *testing.T) {
 		responses: []*response{
 			{
 				statusCode: 200,
-				body:       "OK",
+				body:       []byte("OK"),
 				header: map[string][]string{
 					"header1": {"value1"},
 				},
 			},
 			{
 				statusCode: 400,
-				body:       "Bad Request",
+				body:       []byte("Bad Request"),
 				header: map[string][]string{
 					"header2": {"value2"},
 				},
@@ -200,15 +201,15 @@ func TestHandler_ServeHTTP(t *testing.T) {
 
 	expectResps := []struct {
 		code int
-		body string
+		body []byte
 	}{
 		{
 			code: 200,
-			body: "OK",
+			body: []byte("OK"),
 		},
 		{
 			code: 400,
-			body: "Bad Request",
+			body: []byte("Bad Request"),
 		},
 	}
 
@@ -224,8 +225,8 @@ func TestHandler_ServeHTTP(t *testing.T) {
 		if w.Code != expect.code {
 			t.Errorf("code does not match: expect %d, got: %d", expect.code, w.Code)
 		}
-		body := w.Body.String()
-		if body != expect.body {
+		body := w.Body.Bytes()
+		if !bytes.Equal(body, expect.body) {
 			t.Errorf("body does not match: expect %s, got: %s", expect.body, body)
 		}
 
@@ -282,7 +283,7 @@ func TestServer(t *testing.T) {
 			},
 			expectResp: &response{
 				statusCode: 200,
-				body:       "OK",
+				body:       []byte("OK"),
 			},
 		},
 		{
@@ -297,7 +298,7 @@ func TestServer(t *testing.T) {
 			},
 			expectResp: &response{
 				statusCode: 400,
-				body:       "Bad Request",
+				body:       []byte("Bad Request"),
 			},
 		},
 		{
@@ -310,7 +311,7 @@ func TestServer(t *testing.T) {
 			},
 			expectResp: &response{
 				statusCode: 500,
-				body:       "Internal Server Error",
+				body:       []byte("Internal Server Error"),
 			},
 		},
 	}
@@ -325,14 +326,14 @@ func TestServer(t *testing.T) {
 		responses: []*responseConfig{
 			{
 				statusCode: 200,
-				body:       "OK",
+				body:       []byte("OK"),
 				headers: []string{
 					"header3: value3",
 				},
 			},
 			{
 				statusCode: 400,
-				body:       "Bad Request",
+				body:       []byte("Bad Request"),
 				headers: []string{
 					"header2: respvalue2",
 					"header3: value3",
@@ -340,7 +341,7 @@ func TestServer(t *testing.T) {
 			},
 			{
 				statusCode: 500,
-				body:       "Internal Server Error",
+				body:       []byte("Internal Server Error"),
 				headers: []string{
 					"header2: respvalue2",
 					"header3: value3",
@@ -373,7 +374,7 @@ func TestServer(t *testing.T) {
 		if r.expectResp.statusCode != resp.StatusCode {
 			t.Errorf("status code does not match: expected: %d, actual: %d", r.expectResp.statusCode, resp.StatusCode)
 		}
-		if r.expectResp.body != string(body) {
+		if !bytes.Equal(r.expectResp.body, body) {
 			t.Errorf("body does not match: expected: %s, actual: %s", r.expectResp.body, string(body))
 		}
 	}

@@ -24,7 +24,7 @@ type serverConfig struct {
 
 type responseConfig struct {
 	statusCode int
-	body       string
+	body       []byte
 	headers    []string
 }
 
@@ -35,7 +35,7 @@ type tlsConfig struct {
 
 type response struct {
 	statusCode int
-	body       string
+	body       []byte
 	header     map[string][]string
 }
 
@@ -93,7 +93,7 @@ func (h *handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	w.WriteHeader(resp.statusCode)
-	w.Write([]byte(resp.body))
+	w.Write(resp.body)
 }
 
 func parseHeaders(headerStrings []string) (map[string][]string, error) {

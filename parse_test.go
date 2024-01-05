@@ -46,14 +46,14 @@ func TestParseArgsSuccess(t *testing.T) {
 				responses: func() []*responseConfig {
 					resp1 := &responseConfig{
 						statusCode: 200,
-						body:       "OK",
+						body:       []byte("OK"),
 						headers: []string{
 							"test-header: header",
 						},
 					}
 					resp2 := &responseConfig{
 						statusCode: 400,
-						body:       "Bad Request",
+						body:       []byte("Bad Request"),
 						headers: []string{
 							"test-headers: value1",
 							"test-headers: value2",
@@ -96,14 +96,14 @@ func TestParseArgsSuccess(t *testing.T) {
 				responses: func() []*responseConfig {
 					resp1 := &responseConfig{
 						statusCode: 200,
-						body:       "OK",
+						body:       []byte("OK"),
 						headers: []string{
 							"test-header: header",
 						},
 					}
 					resp2 := &responseConfig{
 						statusCode: 400,
-						body:       "Bad Request",
+						body:       []byte("Bad Request"),
 						headers: []string{
 							"test-headers: value1",
 							"test-headers: value2",
@@ -146,14 +146,14 @@ func TestParseArgsSuccess(t *testing.T) {
 				responses: func() []*responseConfig {
 					resp1 := &responseConfig{
 						statusCode: 200,
-						body:       "OK",
+						body:       []byte("OK"),
 						headers: []string{
 							"test-header: header",
 						},
 					}
 					resp2 := &responseConfig{
 						statusCode: 400,
-						body:       "Bad Request",
+						body:       []byte("Bad Request"),
 						headers: []string{
 							"test-headers: value1",
 							"test-headers: value2",
