@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"maps"
 	"net/http"
 	"net/http/httputil"
 	"os"
@@ -13,7 +12,7 @@ import (
 
 type serverConfig struct {
 	addr      string
-	headers   map[string][]string
+	headers   http.Header
 	responses []*responseConfig
 	tls       *tlsConfig
 }
@@ -21,7 +20,7 @@ type serverConfig struct {
 type responseConfig struct {
 	statusCode int
 	body       []byte
-	headers    map[string][]string
+	headers    http.Header
 }
 
 type tlsConfig struct {
@@ -32,7 +31,7 @@ type tlsConfig struct {
 type response struct {
 	statusCode int
 	body       []byte
-	headers    map[string][]string
+	headers    http.Header
 }
 
 type logger struct {
@@ -94,15 +93,8 @@ func (h *handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		h.logger.log(os.Stdout, string(reqBytes))
 	}
 
-	for k, vs := range resp.headers {
-		for i, v := range vs {
-			if i == 0 {
-				w.Header().Set(k, v)
-			} else {
-				w.Header().Add(k, v)
-			}
-		}
-	}
+	copyHeader(w.Header(), resp.headers)
+
 	w.WriteHeader(resp.statusCode)
 	w.Write(resp.body)
 }
@@ -120,7 +112,7 @@ func newServer(c *serverConfig) *server {
 	return &server{s, ch}
 }
 
-func newHandler(grobalHeader map[string][]string, respConfigs []*responseConfig, shutdownFunc func()) *handler {
+func newHandler(grobalHeader http.Header, respConfigs []*responseConfig, shutdownFunc func()) *handler {
 	handler := &handler{
 		shutdownServer: shutdownFunc,
 	}
@@ -134,14 +126,26 @@ func newHandler(grobalHeader map[string][]string, respConfigs []*responseConfig,
 	return handler
 }
 
-func newResponse(c *responseConfig, baseHeader map[string][]string) *response {
+func copyHeader(dst, src http.Header) {
+	for k, vs := range src {
+		for i, v := range vs {
+			if i == 0 {
+				dst.Set(k, v)
+			} else {
+				dst.Add(k, v)
+			}
+		}
+	}
+}
+
+func newResponse(c *responseConfig, baseHeader http.Header) *response {
 	r := &response{
 		statusCode: c.statusCode,
 		body:       c.body,
-		headers:    maps.Clone(baseHeader),
+		headers:    baseHeader.Clone(),
 	}
 
-	maps.Copy(r.headers, c.headers)
+	copyHeader(r.headers, c.headers)
 
 	return r
 }

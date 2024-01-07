@@ -39,28 +39,38 @@ func headerEqueal(h1, h2 map[string][]string) bool {
 	return reflect.DeepEqual(normalize(h1), normalize(h2))
 }
 
+func httpHeader(m map[string][]string) http.Header {
+	header := http.Header{}
+	for k, v := range m {
+		for _, v := range v {
+			header.Add(k, v)
+		}
+	}
+	return header
+}
+
 func TestNewServerSuccess(t *testing.T) {
 	arg := &serverConfig{
 		addr: ":1234",
-		headers: map[string][]string{
+		headers: httpHeader(map[string][]string{
 			"header1": {"value1"},
 			"header2": {"value2-1", "value2-2"},
-		},
+		}),
 		responses: []*responseConfig{
 			{
 				statusCode: 200,
 				body:       []byte("OK"),
-				headers: map[string][]string{
+				headers: httpHeader(map[string][]string{
 					"header3": {"value3"},
-				},
+				}),
 			},
 			{
 				statusCode: 400,
 				body:       []byte("Bad Request"),
-				headers: map[string][]string{
+				headers: httpHeader(map[string][]string{
 					"header2": {"respvalue2"},
 					"header3": {"value3"},
-				},
+				}),
 			},
 		},
 	}
@@ -71,20 +81,20 @@ func TestNewServerSuccess(t *testing.T) {
 			{
 				statusCode: 200,
 				body:       []byte("OK"),
-				headers: map[string][]string{
+				headers: httpHeader(map[string][]string{
 					"header1": {"value1"},
 					"header2": {"value2-1", "value2-2"},
 					"header3": {"value3"},
-				},
+				}),
 			},
 			{
 				statusCode: 400,
 				body:       []byte("Bad Request"),
-				headers: map[string][]string{
+				headers: httpHeader(map[string][]string{
 					"header1": {"value1"},
 					"header2": {"respvalue2"},
 					"header3": {"value3"},
-				},
+				}),
 			},
 		},
 	}
@@ -141,16 +151,16 @@ func TestHandler_ServeHTTP(t *testing.T) {
 			{
 				statusCode: 200,
 				body:       []byte("OK"),
-				headers: map[string][]string{
+				headers: httpHeader(map[string][]string{
 					"header1": {"value1"},
-				},
+				}),
 			},
 			{
 				statusCode: 400,
 				body:       []byte("Bad Request"),
-				headers: map[string][]string{
+				headers: httpHeader(map[string][]string{
 					"header2": {"value2"},
-				},
+				}),
 			},
 		},
 		shutdownServer: func() {
@@ -234,11 +244,11 @@ func TestServer(t *testing.T) {
 			expectResp: &response{
 				statusCode: 200,
 				body:       []byte("OK"),
-				headers: map[string][]string{
+				headers: httpHeader(map[string][]string{
 					"header1": {"value1"},
 					"header2": {"value2-1", "value2-2"},
 					"header3": {"value3"},
-				},
+				}),
 			},
 		},
 		{
@@ -254,11 +264,11 @@ func TestServer(t *testing.T) {
 			expectResp: &response{
 				statusCode: 400,
 				body:       []byte("Bad Request"),
-				headers: map[string][]string{
+				headers: httpHeader(map[string][]string{
 					"header1": {"value1"},
 					"header2": {"respvalue2"},
 					"header3": {"value3"},
-				},
+				}),
 			},
 		},
 		{
@@ -272,44 +282,44 @@ func TestServer(t *testing.T) {
 			expectResp: &response{
 				statusCode: 500,
 				body:       []byte("Internal Server Error"),
-				headers: map[string][]string{
+				headers: httpHeader(map[string][]string{
 					"header1": {"value1"},
 					"header2": {"respvalue2"},
 					"header3": {"value3"},
-				},
+				}),
 			},
 		},
 	}
 
 	server := newServer(&serverConfig{
 		addr: ":0",
-		headers: map[string][]string{
+		headers: httpHeader(map[string][]string{
 			"header1": {"value1"},
 			"header2": {"value2-1", "value2-2"},
-		},
+		}),
 		responses: []*responseConfig{
 			{
 				statusCode: 200,
 				body:       []byte("OK"),
-				headers: map[string][]string{
+				headers: httpHeader(map[string][]string{
 					"header3": {"value3"},
-				},
+				}),
 			},
 			{
 				statusCode: 400,
 				body:       []byte("Bad Request"),
-				headers: map[string][]string{
+				headers: httpHeader(map[string][]string{
 					"header2": {"respvalue2"},
 					"header3": {"value3"},
-				},
+				}),
 			},
 			{
 				statusCode: 500,
 				body:       []byte("Internal Server Error"),
-				headers: map[string][]string{
+				headers: httpHeader(map[string][]string{
 					"header2": {"respvalue2"},
 					"header3": {"value3"},
-				},
+				}),
 			},
 		},
 	})

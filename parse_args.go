@@ -7,6 +7,7 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"net/http"
 	"net/textproto"
 	"os"
 	"strconv"
@@ -177,12 +178,18 @@ func parseResponsesPart(args []string) ([]*responseConfig, error) {
 	return resps, nil
 }
 
-func parseHeaders(headerStrings []string) (map[string][]string, error) {
+func parseHeaders(headerStrings []string) (http.Header, error) {
 	bufr := bufio.NewReader(strings.NewReader(strings.Join(headerStrings, "\r\n") + "\r\n\r\n"))
 	r := textproto.NewReader(bufr)
 	header, err := r.ReadMIMEHeader()
 	if err != nil {
 		return nil, err
 	}
-	return header, nil
+	httpHeader := http.Header{}
+	for k, v := range header {
+		for _, v := range v {
+			httpHeader.Add(k, v)
+		}
+	}
+	return httpHeader, nil
 }

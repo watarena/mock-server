@@ -4,7 +4,6 @@ import (
 	"errors"
 	"flag"
 	"fmt"
-	"net/textproto"
 	"path"
 	"reflect"
 	"runtime"
@@ -17,23 +16,6 @@ func serverToString(s *serverConfig) string {
 		resps[i] = *r
 	}
 	return fmt.Sprintf("%#v, responses: %#v", *s, resps)
-}
-
-func normalizeHeaders(t *testing.T, headers map[string][]string) map[string][]string {
-	t.Helper()
-
-	normalizedHeaders := map[string][]string{}
-
-	for k, v := range headers {
-		normalizedKey := textproto.CanonicalMIMEHeaderKey(k)
-		if _, ok := normalizedHeaders[normalizedKey]; ok {
-			t.Fatalf("headers have duplicated keys: %s", normalizedKey)
-			return nil
-		}
-		normalizedHeaders[normalizedKey] = v
-	}
-
-	return normalizedHeaders
 }
 
 func TestParseArgsSuccess(t *testing.T) {
@@ -75,19 +57,19 @@ func TestParseArgsSuccess(t *testing.T) {
 			},
 			expect: &serverConfig{
 				addr:    ":8080",
-				headers: normalizeHeaders(t, map[string][]string{}),
+				headers: httpHeader(map[string][]string{}),
 				responses: func() []*responseConfig {
 					resp1 := &responseConfig{
 						statusCode: 200,
 						body:       []byte("OK"),
-						headers: normalizeHeaders(t, map[string][]string{
+						headers: httpHeader(map[string][]string{
 							"test-header": {"header"},
 						}),
 					}
 					resp2 := &responseConfig{
 						statusCode: 400,
 						body:       []byte("Bad Request"),
-						headers: normalizeHeaders(t, map[string][]string{
+						headers: httpHeader(map[string][]string{
 							"test-headers": {"value1", "value2"},
 						}),
 					}
@@ -97,17 +79,17 @@ func TestParseArgsSuccess(t *testing.T) {
 						{
 							statusCode: 200,
 							body:       []byte("a\nb\nc"),
-							headers:    normalizeHeaders(t, map[string][]string{}),
+							headers:    httpHeader(map[string][]string{}),
 						},
 						{
 							statusCode: 200,
 							body:       []byte("body from file\n"),
-							headers:    normalizeHeaders(t, map[string][]string{}),
+							headers:    httpHeader(map[string][]string{}),
 						},
 						{
 							statusCode: 200,
 							body:       []byte("body from file"),
-							headers:    normalizeHeaders(t, map[string][]string{}),
+							headers:    httpHeader(map[string][]string{}),
 						},
 					}
 				}(),
@@ -139,21 +121,21 @@ func TestParseArgsSuccess(t *testing.T) {
 			},
 			expect: &serverConfig{
 				addr: ":1234",
-				headers: normalizeHeaders(t, map[string][]string{
+				headers: httpHeader(map[string][]string{
 					"grobal-header": {"grobal1", "grobal2"},
 				}),
 				responses: func() []*responseConfig {
 					resp1 := &responseConfig{
 						statusCode: 200,
 						body:       []byte("OK"),
-						headers: normalizeHeaders(t, map[string][]string{
+						headers: httpHeader(map[string][]string{
 							"test-header": {"header"},
 						}),
 					}
 					resp2 := &responseConfig{
 						statusCode: 400,
 						body:       []byte("Bad Request"),
-						headers: normalizeHeaders(t, map[string][]string{
+						headers: httpHeader(map[string][]string{
 							"test-headers": {"value1", "value2"},
 						}),
 					}
@@ -187,21 +169,21 @@ func TestParseArgsSuccess(t *testing.T) {
 			},
 			expect: &serverConfig{
 				addr: ":1234",
-				headers: normalizeHeaders(t, map[string][]string{
+				headers: httpHeader(map[string][]string{
 					"grobal-header": {"grobal1", "grobal2"},
 				}),
 				responses: func() []*responseConfig {
 					resp1 := &responseConfig{
 						statusCode: 200,
 						body:       []byte("OK"),
-						headers: normalizeHeaders(t, map[string][]string{
+						headers: httpHeader(map[string][]string{
 							"test-header": {"header"},
 						}),
 					}
 					resp2 := &responseConfig{
 						statusCode: 400,
 						body:       []byte("Bad Request"),
-						headers: normalizeHeaders(t, map[string][]string{
+						headers: httpHeader(map[string][]string{
 							"test-headers": {"value1", "value2"},
 						}),
 					}
