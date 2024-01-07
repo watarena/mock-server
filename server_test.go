@@ -42,25 +42,24 @@ func headerEqueal(h1, h2 map[string][]string) bool {
 func TestNewServerSuccess(t *testing.T) {
 	arg := &serverConfig{
 		addr: ":1234",
-		headers: []string{
-			"header1: value1",
-			"header2: value2-1",
-			"header2: value2-2",
+		headers: map[string][]string{
+			"header1": {"value1"},
+			"header2": {"value2-1", "value2-2"},
 		},
 		responses: []*responseConfig{
 			{
 				statusCode: 200,
 				body:       []byte("OK"),
-				headers: []string{
-					"header3: value3",
+				headers: map[string][]string{
+					"header3": {"value3"},
 				},
 			},
 			{
 				statusCode: 400,
 				body:       []byte("Bad Request"),
-				headers: []string{
-					"header2: respvalue2",
-					"header3: value3",
+				headers: map[string][]string{
+					"header2": {"respvalue2"},
+					"header3": {"value3"},
 				},
 			},
 		},
@@ -72,7 +71,7 @@ func TestNewServerSuccess(t *testing.T) {
 			{
 				statusCode: 200,
 				body:       []byte("OK"),
-				header: map[string][]string{
+				headers: map[string][]string{
 					"header1": {"value1"},
 					"header2": {"value2-1", "value2-2"},
 					"header3": {"value3"},
@@ -81,7 +80,7 @@ func TestNewServerSuccess(t *testing.T) {
 			{
 				statusCode: 400,
 				body:       []byte("Bad Request"),
-				header: map[string][]string{
+				headers: map[string][]string{
 					"header1": {"value1"},
 					"header2": {"respvalue2"},
 					"header3": {"value3"},
@@ -90,10 +89,7 @@ func TestNewServerSuccess(t *testing.T) {
 		},
 	}
 
-	s, err := newServer(arg)
-	if err != nil {
-		t.Fatalf("error was not expected, but returned: %#v", err)
-	}
+	s := newServer(arg)
 	if s.Addr != expectAddr {
 		t.Errorf("addr: expect %s but got %s", expectAddr, s.Addr)
 	}
@@ -116,13 +112,13 @@ func TestNewServerSuccess(t *testing.T) {
 		actualRes := actualResps[i]
 
 		// check header
-		if !headerEqueal(actualRes.header, expectRes.header) {
+		if !headerEqueal(actualRes.headers, expectRes.headers) {
 			t.Fatalf("header of %d-th responses do not match: expected %#v, got: %#v", i, expectRes, actualRes)
 		}
 
 		// check except header
-		actualRes.header = nil
-		expectRes.header = nil
+		actualRes.headers = nil
+		expectRes.headers = nil
 		if !reflect.DeepEqual(actualRes, expectRes) {
 			t.Fatalf("%d-th responses do not match: expected %#v, got: %#v", i, expectRes, actualRes)
 		}
@@ -138,43 +134,6 @@ func TestNewServerSuccess(t *testing.T) {
 	}
 }
 
-func TestNewServerFailure(t *testing.T) {
-	cases := []struct {
-		name string
-		arg  *serverConfig
-	}{
-		{
-			name: "invalidGrobalHeaderOption",
-			arg: &serverConfig{
-				headers: []string{"invalid header"},
-			},
-		},
-		{
-			name: "invalidResponseHeaderOption",
-			arg: &serverConfig{
-				responses: []*responseConfig{
-					{
-						headers: []string{"invalid header"},
-					},
-				},
-			},
-		},
-	}
-
-	for _, c := range cases {
-		c := c
-		t.Run(c.name, func(t *testing.T) {
-			server, err := newServer(c.arg)
-			if err == nil {
-				t.Error("error is expected, but got nil")
-			}
-			if server != nil {
-				t.Errorf("server is expected to be nil, but not: %#v", server)
-			}
-		})
-	}
-}
-
 func TestHandler_ServeHTTP(t *testing.T) {
 	shutdownCh := make(chan struct{})
 	handler := &handler{
@@ -182,14 +141,14 @@ func TestHandler_ServeHTTP(t *testing.T) {
 			{
 				statusCode: 200,
 				body:       []byte("OK"),
-				header: map[string][]string{
+				headers: map[string][]string{
 					"header1": {"value1"},
 				},
 			},
 			{
 				statusCode: 400,
 				body:       []byte("Bad Request"),
-				header: map[string][]string{
+				headers: map[string][]string{
 					"header2": {"value2"},
 				},
 			},
@@ -239,28 +198,19 @@ func TestHandler_ServeHTTP(t *testing.T) {
 	case <-shutdownCh:
 	case <-time.After(time.Second):
 		t.Fatal("shutdownServer was not called")
-
 	}
 
-	// test that ServeHTTP does not return
-	c := make(chan struct{})
+	// test that ServeHTTP does not return response
 	w := httptest.NewRecorder()
 
-	go func() {
+	func() {
 		defer func() {
 			recover()
-			close(c)
 		}()
 		r := httptest.NewRequest("GET", "/", nil)
 		handler.ServeHTTP(w, r)
 	}()
 
-	select {
-	case <-c:
-	case <-time.After(time.Second):
-		t.Fatalf("Unexpected resonse was returned: code: %d, body: %s", w.Code, w.Body.String())
-
-	}
 	if w.Flushed {
 		t.Errorf("response returned: code: %d, body: %s", w.Code, w.Body.String())
 	}
@@ -284,6 +234,11 @@ func TestServer(t *testing.T) {
 			expectResp: &response{
 				statusCode: 200,
 				body:       []byte("OK"),
+				headers: map[string][]string{
+					"header1": {"value1"},
+					"header2": {"value2-1", "value2-2"},
+					"header3": {"value3"},
+				},
 			},
 		},
 		{
@@ -299,6 +254,11 @@ func TestServer(t *testing.T) {
 			expectResp: &response{
 				statusCode: 400,
 				body:       []byte("Bad Request"),
+				headers: map[string][]string{
+					"header1": {"value1"},
+					"header2": {"respvalue2"},
+					"header3": {"value3"},
+				},
 			},
 		},
 		{
@@ -312,46 +272,47 @@ func TestServer(t *testing.T) {
 			expectResp: &response{
 				statusCode: 500,
 				body:       []byte("Internal Server Error"),
+				headers: map[string][]string{
+					"header1": {"value1"},
+					"header2": {"respvalue2"},
+					"header3": {"value3"},
+				},
 			},
 		},
 	}
 
-	server, err := newServer(&serverConfig{
+	server := newServer(&serverConfig{
 		addr: ":0",
-		headers: []string{
-			"header1: value1",
-			"header2: value2-1",
-			"header2: value2-2",
+		headers: map[string][]string{
+			"header1": {"value1"},
+			"header2": {"value2-1", "value2-2"},
 		},
 		responses: []*responseConfig{
 			{
 				statusCode: 200,
 				body:       []byte("OK"),
-				headers: []string{
-					"header3: value3",
+				headers: map[string][]string{
+					"header3": {"value3"},
 				},
 			},
 			{
 				statusCode: 400,
 				body:       []byte("Bad Request"),
-				headers: []string{
-					"header2: respvalue2",
-					"header3: value3",
+				headers: map[string][]string{
+					"header2": {"respvalue2"},
+					"header3": {"value3"},
 				},
 			},
 			{
 				statusCode: 500,
 				body:       []byte("Internal Server Error"),
-				headers: []string{
-					"header2: respvalue2",
-					"header3: value3",
+				headers: map[string][]string{
+					"header2": {"respvalue2"},
+					"header3": {"value3"},
 				},
 			},
 		},
 	})
-	if err != nil {
-		t.Fatalf("newServer failed: %#v", err)
-	}
 	c := make(chan error)
 	go func() {
 		c <- server.Serve(l)
@@ -376,6 +337,12 @@ func TestServer(t *testing.T) {
 		}
 		if !bytes.Equal(r.expectResp.body, body) {
 			t.Errorf("body does not match: expected: %s, actual: %s", r.expectResp.body, string(body))
+		}
+		for k, v := range r.expectResp.headers {
+			actual := resp.Header.Values(k)
+			if !reflect.DeepEqual(v, actual) {
+				t.Errorf("header %q does not match: extected: %v, actual: %v", k, v, actual)
+			}
 		}
 	}
 

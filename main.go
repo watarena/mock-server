@@ -35,11 +35,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	server, err := newServer(sc)
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
-	}
+	server := newServer(sc)
 
 	if sc.tls != nil {
 		err = server.ListenAndServeTLS(sc.tls.certFile, sc.tls.keyFile)

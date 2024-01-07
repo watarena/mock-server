@@ -1,23 +1,19 @@
 package main
 
 import (
-	"bufio"
 	"context"
 	"fmt"
 	"io"
-	"log"
 	"maps"
 	"net/http"
 	"net/http/httputil"
-	"net/textproto"
 	"os"
-	"strings"
 	"sync"
 )
 
 type serverConfig struct {
 	addr      string
-	headers   []string
+	headers   map[string][]string
 	responses []*responseConfig
 	tls       *tlsConfig
 }
@@ -25,7 +21,7 @@ type serverConfig struct {
 type responseConfig struct {
 	statusCode int
 	body       []byte
-	headers    []string
+	headers    map[string][]string
 }
 
 type tlsConfig struct {
@@ -36,7 +32,7 @@ type tlsConfig struct {
 type response struct {
 	statusCode int
 	body       []byte
-	header     map[string][]string
+	headers    map[string][]string
 }
 
 type logger struct {
@@ -84,7 +80,7 @@ func (h *handler) getResponse() (resp *response, isLast bool) {
 func (h *handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	resp, isLast := h.getResponse()
 	if resp == nil {
-		panic("all responses are used")
+		panic(http.ErrAbortHandler)
 	}
 
 	if isLast {
@@ -98,7 +94,7 @@ func (h *handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		h.logger.log(os.Stdout, string(reqBytes))
 	}
 
-	for k, vs := range resp.header {
+	for k, vs := range resp.headers {
 		for i, v := range vs {
 			if i == 0 {
 				w.Header().Set(k, v)
@@ -111,68 +107,41 @@ func (h *handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.Write(resp.body)
 }
 
-func parseHeaders(headerStrings []string) (map[string][]string, error) {
-	bufr := bufio.NewReader(strings.NewReader(strings.Join(headerStrings, "\r\n") + "\r\n\r\n"))
-	r := textproto.NewReader(bufr)
-	header, err := r.ReadMIMEHeader()
-	if err != nil {
-		return nil, err
-	}
-	return header, nil
-}
-
-func newServer(c *serverConfig) (*server, error) {
+func newServer(c *serverConfig) *server {
 	ch := make(chan error)
 	s := &http.Server{
-		Addr:     c.addr,
-		ErrorLog: log.New(io.Discard, "", 0),
+		Addr: c.addr,
 	}
 
-	handler, err := newHandler(c.headers, c.responses, func() { ch <- s.Shutdown(context.Background()) })
-	if err != nil {
-		return nil, err
-	}
+	handler := newHandler(c.headers, c.responses, func() { ch <- s.Shutdown(context.Background()) })
 
 	s.Handler = handler
 
-	return &server{s, ch}, nil
+	return &server{s, ch}
 }
 
-func newHandler(grobalHeaderLines []string, respConfigs []*responseConfig, shutdownFunc func()) (*handler, error) {
+func newHandler(grobalHeader map[string][]string, respConfigs []*responseConfig, shutdownFunc func()) *handler {
 	handler := &handler{
 		shutdownServer: shutdownFunc,
 	}
 
-	grobalHeader, err := parseHeaders(grobalHeaderLines)
-	if err != nil {
-		return nil, err
-	}
-
 	handler.responses = make([]*response, len(respConfigs))
 	for i, rc := range respConfigs {
-		r, err := newResponse(rc, grobalHeader)
-		if err != nil {
-			return nil, err
-		}
+		r := newResponse(rc, grobalHeader)
 		handler.responses[i] = r
 	}
 
-	return handler, nil
+	return handler
 }
 
-func newResponse(c *responseConfig, baseHeader map[string][]string) (*response, error) {
+func newResponse(c *responseConfig, baseHeader map[string][]string) *response {
 	r := &response{
 		statusCode: c.statusCode,
 		body:       c.body,
-		header:     maps.Clone(baseHeader),
+		headers:    maps.Clone(baseHeader),
 	}
 
-	header, err := parseHeaders(c.headers)
-	if err != nil {
-		return nil, err
-	}
+	maps.Copy(r.headers, c.headers)
 
-	maps.Copy(r.header, header)
-
-	return r, nil
+	return r
 }
