@@ -17,6 +17,8 @@ const (
 // optArrayString is string array implementing flag.Value
 type optStringArray []string
 
+var _ flag.Value = (*optStringArray)(nil)
+
 func (a *optStringArray) String() string {
 	return fmt.Sprintf("%v", *a)
 }

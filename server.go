@@ -74,7 +74,7 @@ func (h *handler) getResponse() (resp *response, isLast bool) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 	i := h.pos
-	if h.pos < len(h.responses) {
+	if i < len(h.responses) {
 		h.pos++
 		return h.responses[i], h.pos >= len(h.responses)
 	}
@@ -122,12 +122,13 @@ func parseHeaders(headerStrings []string) (map[string][]string, error) {
 }
 
 func newServer(c *serverConfig) (*server, error) {
+	ch := make(chan error)
 	s := &http.Server{
 		Addr:     c.addr,
 		ErrorLog: log.New(io.Discard, "", 0),
 	}
 
-	handler, ch, err := newHandler(c.headers, c.responses, s)
+	handler, err := newHandler(c.headers, c.responses, func() { ch <- s.Shutdown(context.Background()) })
 	if err != nil {
 		return nil, err
 	}
@@ -137,27 +138,26 @@ func newServer(c *serverConfig) (*server, error) {
 	return &server{s, ch}, nil
 }
 
-func newHandler(grobalHeaderLines []string, respConfigs []*responseConfig, server *http.Server) (*handler, chan error, error) {
-	ch := make(chan error)
+func newHandler(grobalHeaderLines []string, respConfigs []*responseConfig, shutdownFunc func()) (*handler, error) {
 	handler := &handler{
-		shutdownServer: func() { ch <- server.Shutdown(context.Background()) },
+		shutdownServer: shutdownFunc,
 	}
 
 	grobalHeader, err := parseHeaders(grobalHeaderLines)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
 	handler.responses = make([]*response, len(respConfigs))
 	for i, rc := range respConfigs {
 		r, err := newResponse(rc, grobalHeader)
 		if err != nil {
-			return nil, nil, err
+			return nil, err
 		}
 		handler.responses[i] = r
 	}
 
-	return handler, ch, nil
+	return handler, nil
 }
 
 func newResponse(c *responseConfig, baseHeader map[string][]string) (*response, error) {
